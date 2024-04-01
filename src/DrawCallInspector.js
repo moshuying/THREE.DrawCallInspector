@@ -25,7 +25,7 @@ class DrawCallInspector {
 	maxDelta = 0;
 	fade = 0.
 	scale = 0.25
-	useMaterials = false
+	useMaterials = true
 	skipFrames = 0
 	resolution = new THREE.Vector2;
 	mounted = false;
@@ -33,7 +33,7 @@ class DrawCallInspector {
 		renderer,
 		scene,
 		camera,
-		useMaterials = false,
+		useMaterials = true,
 		skipFrames = 0,
 		scale = 0.25,
 		fade = 0.6) {
@@ -146,7 +146,6 @@ class DrawCallInspector {
 
 		// Uniforms ( per Mesh )
 
-		let uniforms;
 
 		const context = {
 			material: null,
@@ -155,10 +154,7 @@ class DrawCallInspector {
 			set: function (uniform, value) {
 
 				if (uniform) {
-
-					uniform.setValue(_gl, value, renderer.textures);
-					uniforms[uniform.id].value = value;
-
+					uniform.value = value;
 				}
 
 			}
@@ -172,40 +168,19 @@ class DrawCallInspector {
 			context.group = group;
 
 			let shader, program, mat = renderer.properties.get(material);
-
-			if (!mat.program) {
-
-				const m = object.material;
-
-				object.material = material;
-
-				renderer.compile(object, tempCamera, object);
-
-				object.material = m;
-
+			if (!mat.currentProgram) {
+				return
 			}
 
-			if (mat.shader === undefined) {
-				shader = mat;
-				program = mat.program;
-			} else {
-				shader = mat.shader;
-				program = shader.program;
-			}
-
-
-
-			uniforms = shader.uniforms;
-
+			program = mat.currentProgram;
 			_gl.useProgram(program.program);
 
-			const map = shader.program.getUniforms().map;
+			const map = mat.uniforms
 
 			context.set(map._uDelta, object.userData.delta);
 			context.set(map._uAge, object.userData.age);
 
 
-			uniforms = null;
 
 
 		}
@@ -314,11 +289,12 @@ class DrawCallInspector {
 			} else if (self.stage === 2) {
 
 				// Rendering visualization
+				
+				object.userData.age *= .9;
+				object.userData.delta += ((object.userData.deltaTime / self.maxDelta) - object.userData.delta) * self.fade;
 
 				if (object.userData.delta !== undefined) {
 
-					object.userData.age *= .9;
-					object.userData.delta += ((object.userData.deltaTime / self.maxDelta) - object.userData.delta) * self.fade;
 
 					if (useMaterials) {
 
@@ -327,7 +303,7 @@ class DrawCallInspector {
 						if (viewMaterial) {
 
 
-							// updateUniforms(object, geometry, viewMaterial, group);
+							updateUniforms(object, geometry, viewMaterial, group);
 
 							renderer.renderBufferDirect2(camera, fog, geometry, viewMaterial, object, group);
 
@@ -336,7 +312,7 @@ class DrawCallInspector {
 
 					} else {
 
-						// updateUniforms(object, geometry, resultMaterial, group);
+						updateUniforms(object, geometry, resultMaterial, group);
 
 						renderer.renderBufferDirect2(camera, fog, geometry, resultMaterial, object, group);
 
@@ -475,7 +451,6 @@ class DrawCallInspector {
 		}
 
 	}
-	tempMaterial = new THREE.MeshBasicMaterial({color:0xffffff,wireframe:true})
 	update() {
 
 		if (this.needsUpdate) {
@@ -512,19 +487,7 @@ class DrawCallInspector {
 			renderer.setScissor(0, 0, resolution.x, resolution.y);
 
 			quad.material.map = this.target.texture;
-			// this.scene.traverse(e=>{
-			// 	if(e.isMesh){
-			// 		e.rawMaterial = e.material
-			// 		e.material = this.tempMaterial
-			// 	}
-			// })
 			renderer.render(tempScene, tempCamera);
-			// this.scene.traverse(e=>{
-			// 	if(e.isMesh){
-			// 		e.material = e.rawMaterial
-			// 		delete e.rawMaterial
-			// 	}
-			// })
 
 			ctx.clearRect(0, 0, resolution.x, resolution.y);
 			ctx.drawImage(renderer.domElement, 0, v2.y - resolution.y, resolution.x, resolution.y, 0, 0, resolution.x, resolution.y);
@@ -535,7 +498,7 @@ class DrawCallInspector {
 			ctx.strokeText(this.calls + ' calls', 10, 20);
 			ctx.fillText(this.calls + ' calls', 10, 20);
 
-			if(this.renderInfo){
+			if (this.renderInfo) {
 
 				ctx.strokeText(this.renderInfo.render.triangles + ' triangles', 10, 32);
 				ctx.fillText(this.renderInfo.render.triangles + ' triangles', 10, 32);

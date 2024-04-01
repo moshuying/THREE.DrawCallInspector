@@ -21,6 +21,20 @@ async function init() {
   cube2.position.x = 2
   scene.add(cube2);
 
+  const sphere = new THREE.Mesh(new THREE.SphereGeometry(1, 32, 32), new THREE.MeshStandardMaterial({
+    map:new THREE.TextureLoader().load('https://threejs.org/examples/textures/brick_diffuse.jpg')
+  }))
+  sphere.position.x = -10
+  cube2.add(sphere)
+
+  for (let i = 0; i < 100; i++) {
+    const sphere = new THREE.Mesh(new THREE.SphereGeometry(1, 32, 32), new THREE.MeshBasicMaterial({color:'red'}))
+    sphere.position.x = Math.random() * 10
+    sphere.position.y = Math.random() * 10
+    sphere.position.z = Math.random() * 10
+    cube2.add(sphere)
+  }
+
   const dci = new DrawCallInspector(renderer, scene, camera)
   dci.mount()
   const controls = new OrbitControls(camera, renderer.domElement);
